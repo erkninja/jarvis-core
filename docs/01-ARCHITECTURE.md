@@ -72,6 +72,7 @@ It does not execute requests.
 
 It does not know about Home Assistant, TrueNAS, or any other implementation details.
 
+The parser extracts words. Plugins assign meaning.
 ⸻
 
 JARVIS Core
