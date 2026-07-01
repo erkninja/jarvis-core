@@ -1,5 +1,3 @@
-# 00 - Vision
-
 # JARVIS Core
 
 ## Mission
