@@ -18,6 +18,10 @@ Voice or Text Client
 ↓
 Speech Recognition (voice only)
 ↓
+Cleanup Preprocessor
+↓
+Fast Response Handler
+↓
 Request Parser
 ↓
 JARVIS Core
@@ -60,6 +64,45 @@ It does not determine what the user means.
 
 Its only responsibility is producing an accurate transcript.
 
+⸻
+
+Cleanup Preprocessor
+
+The Cleanup Preprocessor prepares a user’s utterance for further processing.
+
+Its purpose is to perform simple, deterministic transformations that remove unnecessary information while preserving the user’s intent.
+
+Examples include:
+
+* Removing wake words.
+* Removing the assistant’s name when used only to address JARVIS.
+* Normalizing whitespace.
+* Performing other predefined text cleanup operations.
+
+The Cleanup Preprocessor does not understand language, infer intent, classify requests, or modify the meaning of the user’s utterance.
+
+Its only responsibility is to produce a clean representation of what the user said before it is passed to the next stage of the processing pipeline.
+
+⸻
+
+Fast Response Handler
+
+The Fast Response Handler provides immediate responses for simple, deterministic interactions without invoking the Request Parser or an AI model.
+Its purpose is to make interactions feel natural by avoiding unnecessary processing for common conversational exchanges.
+Examples include:
+	●	Wake acknowledgement
+	●	Greetings
+	●	Expressions of thanks
+	●	Session cancellation
+	●	Other predefined responses that do not require interpretation
+The Fast Response Handler must never consume an utterance that contains an executable request.
+For example:
+	●	“Hi Jarvis.” → Respond immediately.
+	●	“Thanks.” → Respond immediately.
+	●	“Never mind.” → Cancel the current request or session.
+	●	“Hi Jarvis, turn on the lights.” → Pass the remaining request to the Request Parser.
+The Fast Response Handler should remain deterministic and lightweight. It is not intended to understand natural language or infer user intent.
+It only handles exact/near-exact allowlisted phrases.
 ⸻
 
 Request Parser
