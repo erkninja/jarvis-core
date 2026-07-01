@@ -89,18 +89,24 @@ Fast Response Handler
 
 The Fast Response Handler provides immediate responses for simple, deterministic interactions without invoking the Request Parser or an AI model.
 Its purpose is to make interactions feel natural by avoiding unnecessary processing for common conversational exchanges.
+
 Examples include:
-	●	Wake acknowledgement
-	●	Greetings
-	●	Expressions of thanks
-	●	Session cancellation
-	●	Other predefined responses that do not require interpretation
+
+* Wake acknowledgement
+* Greetings
+* Expressions of thanks
+* Session cancellation
+* Other predefined responses that do not require interpretation
+
 The Fast Response Handler must never consume an utterance that contains an executable request.
+
 For example:
-	●	“Hi Jarvis.” → Respond immediately.
-	●	“Thanks.” → Respond immediately.
-	●	“Never mind.” → Cancel the current request or session.
-	●	“Hi Jarvis, turn on the lights.” → Pass the remaining request to the Request Parser.
+
+* “Hi Jarvis.” → Respond immediately.
+* “Thanks.” → Respond immediately.
+* “Never mind.” → Cancel the current request or session.
+* “Hi Jarvis, turn on the lights.” → Pass the remaining request to the Request Parser.
+
 The Fast Response Handler should remain deterministic and lightweight. It is not intended to understand natural language or infer user intent.
 It only handles exact/near-exact allowlisted phrases.
 ⸻
