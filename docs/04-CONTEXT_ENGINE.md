@@ -1,249 +1,189 @@
-# context_engine.md (v0.1)
+# 📄 Context Engine — Core Definition (drop-in)
 
 ## 1. Purpose
 
-The Context Engine is responsible for enriching structured requests with known system state, environmental metadata, and session-level information.
+The Context Engine is a **deterministic enrichment system** that fills missing or implicit fields in a Semantic Request using structured system context.
 
-Its job is not to interpret intent.
+It does not interpret user intent and does not validate real-world entities.
 
-It exists to complete missing information, not to invent new meaning.
+It operates only on:
+
+* session context
+* device metadata (ESP32 location tags)
+* focus object
+* recent action history (session-scoped)
 
 ---
 
 ## 2. What Context Is
 
-Context is any trusted or derived system knowledge that helps resolve incomplete or ambiguous structured requests.
+Context is defined as:
 
-Context includes, but is not limited to:
+> Any non-explicit information that helps complete a partially specified Semantic Request without altering its semantic meaning.
 
-* Source identity (e.g. ESP32 node)
-* Physical location (room, zone, device origin)
-* Session state (ongoing interaction memory)
-* Device state snapshots
-* Recent system events relevant to the request
-* Focus object (current topic or target of interaction)
+This includes:
 
-Context is always **external to the request itself**, but may be merged into it.
-
----
-
-## 3. Context Lifecycle
-
-Context exists in three stages:
-
-### 3.1 Ingestion
-
-Context enters the system from:
-
-* ESP32 nodes
-* user input channels
-* system events
-* external integrations (Home Assistant, sensors, APIs)
-
-### 3.2 Resolution
-
-During request processing, missing fields may be filled using available context.
-
-Example:
-
-* Parsed request: `location = null`
-* Context provides: `source_device = esp32_office_01`
-* Resolved: `location = office`
-
-### 3.3 Expiration
-
-Context is not permanent by default.
-
-* Session context expires with inactivity
-* Device context persists while device is active
-* Environmental state is refreshed periodically
-
-No context is assumed to be globally valid unless explicitly defined.
-
----
-
-## 4. Session Context
-
-Session context represents short-term interaction continuity.
-
-It includes:
-
-* recent commands
-* active focus object
-* unresolved references (“it”, “that”, “same as before”)
-* temporary user preferences for the session
-
-Session context is:
-
-* mutable
-* ephemeral
-* scoped to a single interaction thread
-
-Session context MUST NOT:
-
-* overwrite persistent system state
-* override explicit user input
-* be used as permanent memory
-
----
-
-## 5. Focus Object
-
-The focus object is the current primary entity of interaction.
-
-Examples:
-
-* “living room lights”
-* “garage door”
-* “music playback session”
-* “robot rover control session”
-
-The focus object is derived from:
-
-* most recent explicit command
-* session continuation signals
-* contextual disambiguation
-
-Rules:
-
-* There is at most one active focus object per session
-* Focus is reset when ambiguity cannot be resolved
-* Focus does NOT imply intent persistence
-
----
-
-## 6. Partial Requests
-
-Requests may be incomplete when entering the system.
-
-Example:
-
-* “turn it off”
-* parsed: `action=turn_off`, `target=null`
-
-The Context Engine may resolve missing fields using:
-
+* location (from ESP32 source)
+* last known device interaction (session history)
 * focus object
-* last referenced device
-* source location
-* session context
-
-If no resolution is possible:
-
-* the field remains null
-* downstream components must handle ambiguity explicitly
-
-The Context Engine MUST NOT guess beyond available context.
+* temporal session state (recent actions)
 
 ---
 
-## 7. Context Enrichment Rules
-
-The Context Engine may enrich a request with:
-
-* location
-* device identity
-* session references
-* inferred target objects (only from explicit prior references)
-
-Enrichment rules:
-
-* Only fill missing fields
-* Never overwrite explicit parsed values
-* Never introduce new intent fields
-* Never modify action semantics
-* Never infer user intent beyond structural completion
-
-Context enrichment is strictly:
-
-> completion, not interpretation
-
----
-
-## 8. What Context Is NOT
-
-Context is explicitly NOT allowed to:
-
-* determine user intent
-* resolve ambiguous meaning beyond structural disambiguation
-* choose between multiple valid actions
-* introduce new commands or capabilities
-* override parsed semantic request fields
-* persist long-term behavioral assumptions without explicit storage layer approval
-
-Context is not intelligence.
-
-It is **reference memory + environmental truth injection**.
-
----
-
-## 9. Boundary With Semantic Request
-
-The Semantic Request defines:
-
-* what the user meant structurally
-
-The Context Engine provides:
-
-* missing structural pieces
+## 3. What Context is NOT
 
 The Context Engine MUST NOT:
 
-* reinterpret intent
-* change action type
-* alter semantic classification
+* decide user intent
+* select between multiple ambiguous targets without deterministic rules
+* invent new entities
+* normalize targets into “known device truth”
+* query external systems (Home Assistant, plugins, etc.)
+* override explicit Semantic Request fields
 
-If Semantic Request says:
-
-```json
-{ "action": "play_music" }
-```
-
-Context Engine may add:
-
-```json
-{ "location": "office" }
-```
-
-It may NOT change:
-
-```json
-{ "action": "stream_spotify_playlist" } 
-```
+If a field is explicit, it is immutable.
 
 ---
 
-## 10. Failure Behavior
+## 4. Inputs
 
-If context is:
+Context Engine receives:
 
-* missing
-* conflicting
-* ambiguous
+### 4.1 Semantic Request
 
-Then:
+Structured object containing:
 
-* do not resolve
-* pass null forward
-* mark field as `unresolved_context`
-
-No guessing is allowed under failure conditions.
+* action
+* target (possibly null)
+* parameters
 
 ---
 
-## 11. Philosophy Summary
+### 4.2 Session Context
 
-The Context Engine is:
+* focus object
+* recent actions (ordered list)
+* last resolved device per category
 
-> a lens that sharpens incomplete requests using known reality
+---
 
-It is NOT:
+### 4.3 Device Origin Context
 
-* reasoning
-* memory
-* intent prediction
-* or decision-making
+* ESP32 ID
+* physical location mapping (room)
 
-It is the system’s:
+---
 
-> grounding layer — nothing more, nothing less
+## 5. Output Rules
+
+Context Engine returns:
+
+* same Semantic Request
+* with ONLY missing fields filled
+
+It MUST NOT:
+
+* modify existing non-null fields
+* rewrite target strings
+* rename objects
+
+---
+
+## 6. Focus Object Rule
+
+If:
+
+```text
+target == null
+```
+
+Then resolution order is:
+
+1. Focus Object (if valid)
+2. Same-room last active device
+3. Session last referenced device
+4. ESP32-origin inferred device context
+5. unresolved → leave null
+
+If multiple candidates exist at a level:
+→ DO NOT resolve (pass upward unchanged)
+
+---
+
+## 7. Temporal Resolution (Session History)
+
+Session history is:
+
+* ordered list of successful device actions only
+
+Used ONLY when:
+
+* target is null
+* focus object is null or invalid
+
+Selection rule:
+
+> most recent valid action within same context scope
+
+Scope priority:
+
+1. same room (highest)
+2. same device type
+3. global session (lowest)
+
+---
+
+## 8. Determinism Rule (IMPORTANT)
+
+Context Engine MUST be deterministic.
+
+Given identical input state:
+
+> output MUST always be identical
+
+No randomness, heuristics, or probabilistic selection allowed.
+
+---
+
+## 9. Failure Behavior
+
+If Context Engine cannot resolve a missing field:
+
+* it MUST leave the field null
+* it MUST NOT guess
+* it MUST NOT infer multiple candidates into one choice
+
+Unresolved ambiguity is valid output.
+
+---
+
+## 10. Interaction Rules
+
+### 10.1 With Semantic Request
+
+* only fills null fields
+* never modifies explicit fields
+
+### 10.2 With Jarvis Core
+
+* Jarvis consumes enriched request
+* Context Engine does not route or execute
+
+### 10.3 With Home Assistant
+
+* Context Engine has no knowledge of HA devices
+
+---
+
+## 11. Summary Model
+
+Context Engine is:
+
+> a deterministic, session-aware field completion system with strict non-inference rules
+
+NOT:
+
+* reasoning engine
+* intent resolver
+* device selector
+* knowledge system
