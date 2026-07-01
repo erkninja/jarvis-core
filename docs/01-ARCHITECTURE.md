@@ -1,310 +1,200 @@
-JARVIS Core
-
 01 - Architecture
 
 Overview
 
-JARVIS is composed of small, independent components that each perform a single responsibility.
+JARVIS is composed of small, independent components that each have a single responsibility.
 
-No component should understand another component’s implementation details.
+Each component receives information, performs one job, and passes the result to the next component.
 
-Each component communicates through well-defined interfaces.
-
-⸻
-
-High-Level Architecture
-
-                  Client
-       (ESP32, Web, Mobile, API)
-                     │
-          Speech Recognition
-             (if voice input)
-                     │
-             Semantic Parser
-                 (LLM)
-                     │
-          Semantic Request
-                     │
-              JARVIS Core
-     ┌────────────┼────────────┐
-     │            │            │
- Context      Router      Trace Recorder
- Engine
-                     │
-             Object Registry
-                     │
-          Appropriate Plugin
-                     │
-        Resolve → Execute
-                     │
-            Execution Result
-                     │
-          Personality Engine
-                     │
-            Speech / Text Reply
+This allows the system to evolve without tightly coupling one part of the application to another.
 
 ⸻
 
-Component Responsibilities
+High-Level Flow
+
+User
+↓
+Voice or Text Client
+↓
+Speech Recognition (voice only)
+↓
+Request Parser
+↓
+JARVIS Core
+↓
+Plugin
+↓
+Response Generator
+↓
+Voice or Text Client
+↓
+User
+
+⸻
+
+Components
+
+Voice or Text Client
+
+The client is how the user interacts with JARVIS.
+
+Examples include:
+
+* ESP32 voice satellite
+* Mobile application
+* Web interface
+* Terminal
+* Future integrations
+
+The client is responsible only for communicating with the user.
+
+It should not contain business logic.
+
+⸻
 
 Speech Recognition
 
-Responsibilities
+Speech Recognition converts spoken audio into text.
 
-* Convert audio into text.
+It does not determine what the user means.
 
-Examples
-
-* Whisper
-* Faster Whisper
-
-Speech Recognition does not understand intent.
+Its only responsibility is producing an accurate transcript.
 
 ⸻
 
-Semantic Parser
+Request Parser
 
-Responsibilities
+The Request Parser analyzes what the user said and converts it into a structured request that JARVIS can understand.
 
-* Understand natural language.
-* Produce a Semantic Request.
+It understands language.
 
-The parser never executes requests.
+It does not execute requests.
 
-The parser never understands plugins.
-
-The parser never understands APIs.
-
-The parser never understands Home Assistant.
-
-It only understands language.
+It does not know about Home Assistant, TrueNAS, or any other implementation details.
 
 ⸻
 
 JARVIS Core
 
-Responsibilities
+JARVIS Core is the heart of the system.
 
-* Receive Semantic Requests.
-* Maintain conversation state.
-* Route requests.
-* Coordinate plugins.
-* Record traces.
-* Generate responses.
+Its responsibilities include:
 
-JARVIS Core owns the application.
+* Maintaining conversation context
+* Routing requests
+* Coordinating plugins
+* Recording execution history
+* Managing the overall flow of the application
 
-⸻
-
-Context Engine
-
-Responsibilities
-
-Maintain conversational state.
-
-Examples
-
-* Current conversation
-* Previous requests
-* Current room
-* Current user
-* Focus object
-* Session ownership
-
-The Context Engine supplies information that was not explicitly spoken.
-
-⸻
-
-Router
-
-Responsibilities
-
-Determine which plugin owns the requested object.
-
-Example
-
-Light
-    ↓
-Home Assistant Plugin
-Calendar
-    ↓
-Calendar Plugin
-Storage
-    ↓
-TrueNAS Plugin
-
-Routing is deterministic.
-
-The Semantic Parser never selects plugins.
-
-⸻
-
-Object Registry
-
-The Object Registry maps object types to plugins.
-
-Example
-
-Light
-Lock
-Climate
-Media Player
-↓
-Home Assistant Plugin
-Calendar
-Todo List
-↓
-Calendar Plugin
-Storage
-Dataset
-Pool
-↓
-TrueNAS Plugin
-
-The registry allows plugins to be replaced without modifying the Semantic Parser.
+JARVIS Core understands the architecture of the system but does not understand the implementation details of any specific plugin.
 
 ⸻
 
 Plugins
 
+Plugins provide the actual capabilities of JARVIS.
+
 Each plugin owns a single domain.
 
-Responsibilities
+Examples include:
 
-* Resolve references.
-* Validate requests.
-* Execute actions.
-* Return results.
+* Home Assistant
+* Calendar
+* TrueNAS
+* Email
+* Media
 
-Examples
+A plugin is responsible for understanding and interacting with the system it represents.
 
-Home Assistant Plugin
+For example, the Home Assistant plugin knows about lights, locks, thermostats, and other smart home devices.
 
-* Lights
-* Locks
-* Climate
-* Sensors
-* Media Players
+The Calendar plugin knows about calendars and events.
 
-Calendar Plugin
-
-* Calendars
-* Events
-* Tasks
-
-TrueNAS Plugin
-
-* Pools
-* Datasets
-* Services
-
-Plugins are authoritative for their domain.
+JARVIS Core never attempts to replace this knowledge.
 
 ⸻
 
-Trace Recorder
+Response Generator
 
-Every request should produce a trace.
+After a request has been completed, the Response Generator determines what should be communicated back to the user.
 
-A trace contains
+Examples include:
 
-* Original transcript
-* Semantic Request
-* Routing decision
-* Resolution
-* Execution
-* Result
-* Response
+* “Done.”
+* “The office lights are now on.”
+* “You have three meetings today.”
 
-Trace data supports
-
-* Debugging
-* Analytics
-* Testing
-* Future improvements
-
-⸻
-
-Personality Engine
-
-Responsibilities
-
-Convert execution results into natural responses.
-
-Examples
-
-Execution Result
-
-Light turned on.
-
-Possible responses
-
-“Done.”
-
-“Certainly.”
-
-“The office lights are now on.”
-
-Personality never affects execution.
+This component controls how JARVIS communicates, but it does not influence how requests are executed.
 
 ⸻
 
 Design Principles
 
-The architecture follows these rules.
+Single Responsibility
 
-1. Components have a single responsibility.
-2. The Semantic Parser understands language.
-3. JARVIS Core understands architecture.
-4. Plugins understand their domain.
-5. Plugins resolve resources.
-6. The Context Engine owns conversation state.
-7. The Personality Engine owns communication.
-8. Every request is traceable.
+Every component should perform one job well.
+
+⸻
+
+Separation of Concerns
+
+Language understanding, request routing, execution, and communication are separate responsibilities.
+
+⸻
+
+Plugin Ownership
+
+Each plugin is the authoritative source for its own domain.
+
+⸻
+
+Implementation Independence
+
+The Request Parser should not know about plugins.
+
+Plugins should not know about the internals of JARVIS Core.
+
+Each component communicates only through well-defined interfaces.
+
+⸻
+
+Extensibility
+
+JARVIS Core maintains a registry of the capabilities available to the system.
+
+Plugins register the objects and actions they support during initialization.
+
+When a request is received, JARVIS Core uses this registry to determine which plugin is responsible for handling the request.
+
+Adding new capabilities should normally involve creating or extending a plugin and registering its capabilities with JARVIS Core, rather than modifying the routing logic itself.
+
+This allows the system to grow while keeping responsibilities clearly separated between the core and individual plugins.
 
 ⸻
 
 Request Lifecycle
 
-User speaks
-↓
-Speech Recognition
-↓
-Semantic Parser
-↓
-Semantic Request
-↓
-Context Engine
-(add context)
-↓
-Router
-↓
-Plugin
-↓
-Resolve
-↓
-Execute
-↓
-Execution Result
-↓
-Trace Recorder
-↓
-Personality Engine
-↓
-Response
+1. The user makes a request.
+2. The request is converted into text if necessary.
+3. The Request Parser determines what the user is asking.
+4. JARVIS Core determines which plugin owns the requested capability.
+5. The selected plugin performs the requested work.
+6. The result is returned to JARVIS Core.
+7. The Response Generator creates a natural response.
+8. The response is returned to the user.
 
 ⸻
 
-Future Components
+Future Expansion
 
-These are outside the scope of Version 1 but should integrate without changing the architecture.
+The architecture is designed so additional capabilities can be added without redesigning the system.
 
-* Voice Identification
-* Learning Engine
-* Alias Manager
-* Proactive Notifications
-* Vision Processing
-* Multi-Agent Planning
-* Mobile Client
-* Web Dashboard
-* Automation Engine
+Examples include:
+
+* Voice identification
+* Vision processing
+* Learning and personalization
+* Mobile applications
+* Web dashboards
+* Additional plugins
+* Additional client types
