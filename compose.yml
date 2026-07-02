@@ -1,0 +1,19 @@
+services:
+  jarvis-core:
+    image: jarvis-core:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+
+    container_name: jarvis-core
+
+    ports:
+      - "8765:8765"
+
+    volumes:
+      - /mnt/fishtank/jarvis/data:/app/data
+      - /mnt/fishtank/jarvis/logs:/app/logs
+      - /mnt/fishtank/jarvis/config:/app/config
+      - /mnt/fishtank/jarvis/cache:/app/cache
+
+    restart: unless-stopped
